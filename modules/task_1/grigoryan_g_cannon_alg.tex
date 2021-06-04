@@ -1,0 +1,802 @@
+\documentclass{report}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{luainputenc}
+\usepackage[english, russian]{babel}
+\usepackage[pdftex]{hyperref}
+\usepackage[14pt]{extsizes}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{amsmath}
+
+\geometry{a4paper,top=2cm,bottom=3cm,left=2cm,right=1.5cm}
+\setlength{\parskip}{0.5cm}
+\setlist{nolistsep, itemsep=0.3cm,parsep=0pt}
+
+\lstset{language=C++,
+		basicstyle=\footnotesize,
+		keywordstyle=\color{blue}\ttfamily,
+		stringstyle=\color{red}\ttfamily,
+		commentstyle=\color{green}\ttfamily,
+		morecomment=[l][\color{magenta}]{\#}, 
+		tabsize=4,
+		breaklines=true,
+  		breakatwhitespace=true,
+  		title=\lstname,       
+}
+
+\makeatletter
+\renewcommand\@biblabel[1]{#1.\hfil}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+
+\begin{center}
+Министерство науки и высшего образования Российской Федерации
+\end{center}
+
+\begin{center}
+Федеральное государственное автономное образовательное учреждение высшего образования \\
+Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского
+\end{center}
+
+\begin{center}
+Институт информационных технологий, математики и механики
+\end{center}
+
+\vspace{4em}
+
+\begin{center}
+\textbf{\LargeОтчет по лабораторной работе} \\
+\end{center}
+\begin{center}
+\textbf{\Large«Умножение плотных матриц. Элементы типа double. Блочная схема, алгоритм Кэннона.»} \\
+\end{center}
+
+\vspace{4em}
+
+\newbox{\lbox}
+\savebox{\lbox}{\hbox{text}}
+\newlength{\maxl}
+\setlength{\maxl}{\wd\lbox}
+\hfill\parbox{7cm}{
+\hspace*{5cm}\hspace*{-5cm}\textbf{Выполнил:} \\ студент группы 381806-4 \\ Григорян Г. А. \\
+\\
+\hspace*{5cm}\hspace*{-5cm}\textbf{Проверил:}\\ доцент кафедры МОСТ, \\ кандидат технических наук \\ Сысоев А. В.\\}
+
+\vspace{\fill}
+
+\begin{center} Нижний Новгород \\ 2021 \end{center}
+
+\end{titlepage}
+
+\setcounter{page}{2}
+
+% Содержание
+\tableofcontents
+\newpage
+
+% Введение
+\section*{Введение}
+\addcontentsline{toc}{section}{Введение}
+Идея данной работы заключается в рассмотрении алгоритма Кэннона для перемножения квадратных матриц. В её основе заложено перемножение матриц. Данная операция является основопологающей и необходимой в использовании в разных облостях повседневной жизни (к примеру графическое моделирование объектов). Предлогаемая работа заключается в реализации алгоритма Кэннона для перемножения квадратных матриц.
+\par В 1969 году Алгоритм Кэннона был впервые представлен и заключался он в расспределённом перемножении дмумерных сеток. Ведущим преимуществом данного алгоритма являлось не зависящее от кол-во процессов требование памяти (память фиксированная).
+\newpage
+
+% Постановка задачи
+\section*{Постановка задачи}
+\addcontentsline{toc}{section}{Постановка задачи}
+Цель работы - перемножение матриц размера {\itshape $n \times n$} для получения результирующей матрицы C порядка {\itshape $n \times n$}, которая является произведением двух матриц А и B.
+В результате работы программы происходит следующее: начальная пересылка блоков матриц A и B в процессы выполняется таким образом, чтобы получаемые блоки сразу могли быть перемножены без каких-либо пересылок данных. Далее при организации цикла выполняется циклическая пересылка как блоков матрицы A (по строкам), так и блоков матрицы B (по столбцам).
+
+Действия по начальной пересылке состоят из следующих шагов:
+
+
+
+\par Требуется реализовать последовательный и параллельный (Кэннона) алгоритмы, для этого нам необходимо:
+
+\begin{itemize}
+    \item[-] реализовать прямой алгоритм умножения матриц;
+    \item[-] реализовать блочный алгоритм Кеннона с использованием технологии OpenMP;
+    \item[-] реализовать блочный алгоритм Кеннона с использованием технологии TBB;
+    \item[-] проверить корректность работы алгоритмов с помощью Google test;
+\end{itemize}
+\par В итоге решения задачи проведем замер времени дабы убедиться в правильности выполнения параллельной программы.
+\newpage
+
+% Метод решения
+\section*{Описание алгоритма}
+\addcontentsline{toc}{section}{Описание алгоритма}
+Во-первых, начальная пересылка блоков матриц A и B в процессы выполняется таким образом, чтобы получаемые блоки сразу могли быть перемножены без каких-либо пересылок данных. Во-вторых, при организации цикла выполняется циклическая пересылка как блоков матрицы A (по строкам), так и блоков матрицы B (по столбцам).
+
+Действия по начальной пересылке состоят из следующих шагов:
+
+\par1) В каждый процесс (i, j) пересылаются блоки Aij и Bij, матрица Cij обнуляется;
+\par2) Каждой строки i декартовой решетки процессов выполняется циклический сдвиг блоков матрицы A на (i – 1) позиций влево (т. е. в направлении убывания номеров столбцов);
+\par3) Для каждого столбца j (j = 0, …, q) выполняется циклическая пересылка блоков матрицы B, содержащихся в каждом процессе (i, j) этого столбца, в направлении убывания номеров строк.
+
+Затем запускается цикл из q итераций, в ходе которого выполняются три действия:
+
+\par1) Содержащиеся в процессе (i, j) блоки матриц A и B перемножаются, и результат прибавляется к
+матрице Сij;
+
+\par2) Для каждой строки i (i = 0, …, q) выполняется циклическая пересылка блоков матрицы A, содержащихся в каждом процессе (i, j) этой строки, в направлении убывания номеров столбцов;
+
+\par3) Для каждого столбца j (j = 0, …, q) выполняется циклическая пересылка блоков матрицы B, содержащихся в каждом процессе (i, j) этого столбца, в направлении убывания номеров строк.
+
+После завершения цикла в каждом процессе будет содержаться матрица Cij, равная соответствующему блоку произведения AB. Останется переслать эти блоки главному процессу.
+
+
+
+% Схема распараллеливания
+\section*{Схема распараллеливания}
+\addcontentsline{toc}{section}{Схема распараллеливания}
+В алгоритме Кеннона суть распараллеливования заключается в том, что мы каждую из двух матриц делим на блоки и соответственно перемножаем их на разных потоках, тем самым мы получим блоки подматриц, из которых будет состоять результирующая матрица.
+\newpage
+
+% Описание программной реализации
+\section*{Описание программной реализации}
+\addcontentsline{toc}{section}{Описание программной реализации}
+При реализации алгоитма Кеннона были использованы следующие функции:
+\par Для начала была использована функция рандомного задания матрицы, которая нужна для удобства при написании тестов для проверки правильности работы алгоритмов, аргументом для нее служит размер матрицы:
+\begin{lstlisting}
+std::vector<double> genMatrix(int n);
+\end{lstlisting}
+\par Следующая функция нужна для последовательного перемножения матриц, где в ее параметрах указаны вектора матриц {\itshape A} и {\itshape B}, а также передан их размер:
+\begin{lstlisting}
+std::vector<double> SequentinalMultiMatrix(const std::vector<double>& A, const std::vector<double>& B, int n);
+\end{lstlisting}
+\par Следующая функция необходима для блочного умножения матриц, где ее аргументами являются также вектора матриц и их размерность:
+\begin{lstlisting}
+std::vector<double> CannonMultiplication(std::vector<double> A, std::vector<double> B, int BlockSize);
+\end{lstlisting}
+\subsection*{OpenMP}
+\addcontentsline{toc}{subsection}{OpenMP}
+Для распараллеливания алгоритма была использована директива:
+\par\verb|#pragma omp parallel for | 
+\par При параллельном алгоритме была использована функция, где на вход поступали вектора матриц и их размер:
+\begin{lstlisting}
+std::vector<double> parallelCannonMult(const std::vector<double>& A, const std::vector<double>& B, int Size);
+\end{lstlisting}
+\par После определения директивы идет параллельная секция, в которой получаем номер текущего потока. При помощи него определяем вспомогательные индексы для определения границ подматриц, а затем уже будет запущен цикл, в котором будут подсчитаны подматрицы и записаны в результирующую матрицу.
+\subsection*{TBB}
+\addcontentsline{toc}{subsection}{TBB}
+\par Для распараллеливания цикла использовался инструмент \verb|tbb::parallel_for(...)|. На вход подается двумерное итерационное пространство \verb|tbb::blocked_range2d|, а также лямбда-функция, производящая необходимые вычисления.
+\par При реализации параллельнго алгоритма TBB была использована функция, где на вход поступали вектора матриц и их размер:
+\begin{lstlisting}
+std::vector<double> parallelCannonMult(const std::vector<double>& A, const std::vector<double>& B, int n);
+\end{lstlisting}
+\par Для начала создаем двухмерное пространство размером, как у результирущей матрицы, Затем создаем в нем еще одно двухмерное подпространство, внутри которого заводим цикл для подсчета результирущей подматрицы.
+\newpage
+
+% Подтверждение корректности
+\section*{Подтверждение корректности}
+\addcontentsline{toc}{section}{Подтверждение корректности}
+Для подтверждения корректности в программе представлен набор тестов, разработанных с помощью использования Google C++ Testing Framework.
+\par Набор представляет из себя тесты, проверяющие корректность вычислений и их эффективность, то есть проверка совпадения результатов последовательного и параллельного методов, а также сравнение их времени работы.
+\par Если все тесты прошли успешно, то это подтверждает корректную работу программы.
+\newpage
+
+% Результаты экспериментов
+\section*{Результаты экспериментов}
+\addcontentsline{toc}{section}{Результаты экспериментов}
+\begin{itemize}
+\item Процессор: AMD Ryzen 2200g CPU @ 3.40GHz   3.40 GHz;
+\item Оперативная память: 16 ГБ (DDR4) 3000 MHz;
+\item ОС: Microsoft Windows 10 Home 64-bit.
+\end{itemize}
+\par В данной лабораторной работе для проверки эффективности программы, посчитаем время работы последовательного и параллельного алгоритмов для матриц, размером 500x500, 1000x1000, 1500x1500.
+\par Результаты экспериментов представлены ниже.
+
+\begin{table}[!h]
+\caption{Результаты экспериментов для OpenMP}
+\centering
+\begin{tabular}{lllll}
+Размеры & Sequential & OpenMP   & Ускорение  \\
+500     & 0.1743     & 0.1054   & 1.35       \\
+1000    & 32.5430    & 10.1844  & 3.43       \\
+1500    & 94.6546   & 34.6459  & 3.196       \\
+\end{tabular}
+\end{table}
+
+\begin{table}[!h]
+\caption{Результаты экспериментов для TBB}
+\centering
+\begin{tabular}{lllll}
+Размеры  & Sequential & TBB       & Ускорение     \\
+500      & 0.6955     & 0.0686    & 2.48          \\
+1000     & 1.7656     & 0.8652    & 2.19       \\
+1500     & 6.7562     & 3.4901    & 2.27       \\
+\end{tabular}
+\end{table}
+
+\par 
+Как уже можно заметить, алгоритм Кэннона заметно быстрее функционирует чем прямой ход обработки перемножения матриц. 
+\newpage
+
+% Заключение
+\section*{Заключение}
+\addcontentsline{toc}{section}{Заключение}
+\par В данной лабораторной работе был реализован прямой и параллельный ход работы алгоритма Кэннона.
+
+Так же для подтверждения корректности былы написаны тесты для проверки корректности работы программы (Google C++ Testing Framework).Исходя из результатов тестирования можно сказать, что параллельный алгортм работает эффективнее чем прямой. 
+\newpage
+
+% Список литературы
+\begin{thebibliography}{1}
+\addcontentsline{toc}{section}{Список литературы}
+\bibitem{Sysoev} Сысоев А.В., Мееров И.Б., Свистунов А.Н., Курылев А.Л., Сенин А.В., Шишков А.В., Корняков К.В., Сиднев А.А. «Параллельное программирование в системах с общей памятью. Инструментальная поддержка». Учебно-методические материалы по программе повышения квалификации «Технологии высокопроизводительных вычислений для обеспечения учебного процесса и научных исследований». Нижний Новгород, 2007, 110 с.
+\bibitem{Sidnev} А.А. Сиднев, А.В. Сысоев, И.Б. Мееров Библиотека Intel Threading Building Blocks – краткое описание, 2007, 29 с.
+\end{thebibliography}
+\newpage
+
+% Приложение
+\section*{Приложение}
+\addcontentsline{toc}{section}{Приложение}
+\par 1. Последовательная реализация.
+\begin{lstlisting}
+// Copyright 2021 Grigoryan Garry
+#ifndef MODULES_TASK_3_GRIGORYAN_G_MATRIX_CANNON_TBB_MATRIX_M_CANNON_H_
+#define MODULES_TASK_3_GRIGORYAN_G_MATRIX_CANNON_TBB_MATRIX_M_CANNON_H_ 
+
+#include <vector>
+#include <complex>
+#include <iostream>
+#include <cmath>
+
+using matrix = std::vector<std::vector<double>>;
+matrix RandomMatrix(const int n);
+matrix NaiveMulti(const matrix &A, const matrix &B);
+matrix BlockMulti(const matrix &A, const matrix &B, const int &blockSize);
+matrix AlgorithmCannonTBB(const matrix &A, const matrix &B);
+bool CompareMatrix(const matrix &A, const matrix &B);
+bool CompareValues(const double &a, const double &b);
+
+#endif  // MODULES_TASK_3_GRIGORYAN_G_MATRIX_CANNON_TBB_MATRIX_M_CANNON_H_
+
+// Copyright 2021 Grigoryan Garry
+#include "../../../modules/task_3/grigoryan_g_matrix_Cannon_TBB/matrix_m_Cannon.h"
+#include <tbb/tbb.h>
+#include <random>
+#include <iostream>
+#include <algorithm>
+#include <exception>
+#include <vector>
+
+
+matrix RandomMatrix(const int n) {
+    if (n <= 0)
+        throw std::invalid_argument("Negative size");
+
+    std::mt19937 generator;
+    std::random_device device;
+    generator.seed(device());
+    std::uniform_real_distribution<double> distribution(0, 100);;
+
+    matrix result(n, std::vector<double>(n, 0));
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            result[i][j] = distribution(generator);
+
+    return result;
+}
+
+matrix NaiveMulti(const matrix &A, const matrix &B) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+
+    int aWidth = A[0].size();
+    int aHeight = A.size();
+    int bWidth = B[0].size();
+    matrix result(m, std::vector<double>(l, 0));
+
+    for (int y = 0; y < aHeight; y++)
+        for (int x = 0; x < bWidth; x++)
+            for (int k = 0; k < aWidth; k++)
+                result[y][x] += A[y][k]*B[k][x];
+
+    return result;
+}
+
+bool CompareMatrix(const matrix &A, const matrix &B) {
+    if (A.size() != B.size() || A[0].size() != B[0].size())
+        return false;
+
+    for (int y = 0; y < A.size(); y++) {
+        for (int x = 0; x < A[0].size(); x++)
+            if (std::fabs(A[y][x] - B[y][x]) > 0.00001) {
+                return false;
+            }
+    }
+
+    return true;
+}
+
+matrix BlockMulti(const matrix &A, const matrix &B, const int &blockSize) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+    if (blockSize > A.size())
+        throw std::invalid_argument("Wrong blockSize");
+
+    int aWidth = A[0].size();
+    int jjMin, kkMin;
+    matrix result(n, std::vector<double>(n, 0));
+
+    for (int jj = 0; jj < aWidth; jj += blockSize) {
+        jjMin = std::min<int>(jj + blockSize, aWidth);
+       for (int kk = 0; kk < aWidth; kk += blockSize) {
+           kkMin = std::min<int>(kk+ blockSize, aWidth);
+           for (int i = 0; i < aWidth; i++) {
+               for (int k = kk; k < kkMin; k++) {
+                   for (int j = jj; j < jjMin; j++) {
+                      result[i][j]  +=  A[i][k] * B[k][j];
+                   }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+
+\end{lstlisting}
+\par 2. Реализация на OpenMP.
+\begin{lstlisting}
+// Copyright 2021 Grigoryan Garry
+#include "../../../modules/task_2/grigoryan_g_Cannon_omp/Cannon.h"
+#include <omp.h>
+#include <random>
+#include <iostream>
+#include <algorithm>
+#include <exception>
+#include <vector>
+
+matrix RandomMatrix(const int n) {
+    if (n <= 0)
+        throw std::invalid_argument("Negative size");
+
+    std::mt19937 generator;
+    std::random_device device;
+    generator.seed(device());
+    std::uniform_real_distribution<double> distribution(0, 100);;
+
+    matrix rez(n, std::vector<double>(n, 0));
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            rez[i][j] = distribution(generator);
+
+    return rez;
+}
+
+matrix NaiveMulti(const matrix &A, const matrix &B) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+
+    size_t n = A[0].size();
+    size_t m = A.size();
+    size_t l = B[0].size();
+    matrix rez(m, std::vector<double>(l, 0));
+
+    for (size_t i = 0; i < m; i++)
+        for (size_t j = 0; j < l; j++)
+            for (size_t k = 0; k < n; k++)
+                rez[i][j] += A[i][k]*B[k][j];
+
+    return rez;
+}
+
+bool CompareValues(const double &a, const double &b) {
+    return std::fabs(a - b) < 0.00001;
+}
+
+bool CompareMatrix(const matrix &A, const matrix &B) {
+    if (A[0].size() != B[0].size() || A.size() != B.size())
+        return false;
+
+    bool temp = true;
+    for (size_t i = 0; i < A.size(); i++) {
+        if (temp == false)
+            break;
+        for (size_t j = 0; j < A[0].size(); j++)
+            if (!CompareValues(A[i][j], B[i][j])) {
+                temp = false;
+                break;
+            }
+    }
+
+    return temp;
+}
+
+matrix BlockMulti(const matrix &A, const matrix &B, const int &blockSize) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+    int temp = blockSize;
+    if (temp > static_cast<int>(A.size()))
+        throw std::invalid_argument("Wrong blockSize");
+
+    int n = A[0].size();
+    int jjMin, kkMin;
+    matrix rez(n, std::vector<double>(n, 0));
+
+    for (int jj = 0; jj < n; jj += blockSize) {
+        jjMin = std::min(jj + blockSize, n);
+       for (int kk = 0; kk < n; kk += blockSize) {
+           kkMin = std::min(kk+ blockSize, n);
+           for (int i = 0; i < n; i++) {
+               for (int k = kk; k < kkMin; k++) {
+                   for (int j = jj; j < jjMin; j++) {
+                      rez[i][j]  +=  A[i][k] * B[k][j];
+                   }
+                }
+            }
+        }
+    }
+
+    return rez;
+}
+
+
+
+matrix AlgorithmCannon(const matrix &A, const matrix &B, const int &num_threads) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+    if (num_threads <= 0)
+        throw std::invalid_argument("Wrong number of threads");
+
+    int n = A[0].size();
+    int n_old = n;
+    int q = std::sqrt(num_threads);
+
+    matrix tempA = A;
+    matrix tempB = B;
+
+    if (n % q != 0) {
+       while (n % q != 0) {
+           tempA.push_back(std::vector<double>(n_old, 0));
+           tempB.push_back(std::vector<double>(n_old, 0));
+           n++;
+       }
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < n - n_old; ++j) {
+                tempA[i].push_back(0);
+                tempB[i].push_back(0);
+            }
+        }
+    }
+    int block_size = n / q;
+    matrix rez(n, std::vector<double>(n));
+
+    #pragma omp parallel num_threads(q*q)
+    {
+        int thread_i = omp_get_thread_num() / q;
+        int thread_j = omp_get_thread_num() % q;
+        int block_i_A = 0, block_j_A = 0, block_i_B = 0, block_j_B = 0;
+
+        matrix num1(block_size), num2(block_size),
+            numrez(block_size, std::vector<double>(block_size, 0));
+
+        for (int k = 0; k < block_size; ++k) {
+            block_i_A = thread_i * block_size + k;
+            block_j_A = ((thread_j + thread_i) % q) * block_size;
+            block_j_B = thread_j * block_size;
+            block_i_B = block_j_A + k;
+            num1[k] = std::vector<double>(tempA[block_i_A].begin() + block_j_A,
+                                        tempA[block_i_A].begin() + block_j_A + block_size);
+            num2[k] = std::vector<double>(tempB[block_i_B].begin() + block_j_B,
+                                        tempB[block_i_B].begin() + block_j_B + block_size);
+        }
+        for (int kk = 0; kk < q; ++kk) {
+            for (int i = 0; i < block_size; ++i) {
+                for (int j = 0; j < block_size; ++j) {
+                    for (int s = 0; s < block_size; ++s) {
+                        numrez[i][j] += num1[i][s] * num2[s][j];
+                    }
+                }
+            }
+            if (kk == q - 1) {
+                break;
+            }
+            for (int k = 0; k < block_size; ++k) {
+                int i_A = thread_i * block_size + k;
+                int j_A = ((block_j_A / block_size + kk + 1) % q) * block_size;
+                int i_B = ((block_i_B / block_size + kk + 1) % q) * block_size + k;
+                int j_B = thread_j * block_size;
+                num1[k] = std::vector<double>(tempA[i_A].begin() + j_A,
+                                            tempA[i_A].begin() + j_A + block_size);
+                num2[k] = std::vector<double>(tempB[i_B].begin() + j_B,
+                                            tempB[i_B].begin() + j_B + block_size);
+            }
+        }
+            for (int i = 0; i < block_size; ++i) {
+                for (int j = 0; j < block_size; ++j) {
+                    int ii = i + thread_i * block_size;
+                    int jj = j + thread_j * block_size;
+                    rez[ii][jj] = numrez[i][j];
+                }
+            }
+            #pragma omp barrier
+            if (n_old != n) {
+                #pragma omp parallel for
+                    for (int i = 0; i < n_old; ++i) {
+                        rez[i].resize(n_old);
+                    }
+            }
+    }
+    rez.resize(n_old);
+    return rez;
+}
+
+\end{lstlisting}
+\begin{lstlisting}
+// Copyright 2021 Grigoryan Garry
+#include <gtest/gtest.h>
+#include <omp.h>
+#include <iostream>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <numeric>
+#include <random>
+#include <stack>
+#include "../../../modules/task_2/grigoryan_g_Cannon_omp/Cannon.h"
+
+TEST(Matrix_Cannon_omp, throw_when_num_th_zero) {
+    matrix A = RandomMatrix(3);
+    matrix B = RandomMatrix(3);
+
+    ASSERT_ANY_THROW(AlgorithmCannon(A, B, 0));
+}
+
+TEST(Matrix_Cannon_omp, throw_when_different_size_mat) {
+    matrix A = RandomMatrix(3);
+    matrix B = RandomMatrix(4);
+
+    ASSERT_ANY_THROW(AlgorithmCannon(A, B, 4));
+}
+
+TEST(Matrix_Cannon_omp, time_for_parallel) {
+    matrix A = RandomMatrix(12);
+    matrix B = RandomMatrix(12);
+
+    double t1 = omp_get_wtime();
+    matrix rez1 = BlockMulti(A, B, 4);
+    t1 = omp_get_wtime() - t1;
+
+    double t2 = omp_get_wtime();
+    matrix rez2 = AlgorithmCannon(A, B, 4);
+    t2 = omp_get_wtime() - t2;
+
+    // std::cout<<t1<<std::endl<<t2<<std::endl;
+
+    ASSERT_TRUE(CompareMatrix(rez1, rez2));
+}
+
+TEST(Matrix_Cannon_omp, correct_result_mat_size_3) {
+    matrix A = {{1.5, 1.7, 2.5},
+                {3.7, 37.8, 2.5},
+                {12.1, 2.0, 2.5}};
+    matrix B = {{1.5, 1.7, 3.2},
+                {3.7, 27.8, 3.2},
+                {12.1, 2.0, 3.2}};
+    matrix rez = {{38.79, 54.81, 18.24},
+                {175.66, 1062.13, 140.8},
+                {55.8, 81.17, 53.12}};
+
+    ASSERT_TRUE(CompareMatrix(rez, AlgorithmCannon(A, B, 4)));
+}
+
+TEST(Matrix_Cannon_omp, correct_result_different_algorithms) {
+    matrix A = RandomMatrix(4);
+    matrix B = RandomMatrix(4);
+
+    ASSERT_TRUE(CompareMatrix(NaiveMulti(A, B), AlgorithmCannon(A, B, 4)));
+}
+
+
+
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+\end{lstlisting}
+\begin{lstlisting}
+// Copyright 2021 Grigoryan Garry
+#ifndef MODULES_TASK_2_GRIGORYAN_G_CANNON_OMP_CANNON_H_
+#define MODULES_TASK_2_GRIGORYAN_G_CANNON_OMP_CANNON_H_
+
+#include <vector>
+#include <complex>
+#include <iostream>
+#include <cmath>
+
+using matrix = std::vector<std::vector<double>>;
+
+matrix RandomMatrix(const int n);
+
+matrix NaiveMulti(const matrix &A, const matrix &B);
+matrix BlockMulti(const matrix &A, const matrix &B, const int &blockSize);
+matrix AlgorithmCannon(const matrix &A, const matrix &B, const int &num_threads);
+
+bool CompareMatrix(const matrix &A, const matrix &B);
+bool CompareValues(const double &a, const double &b);
+
+#endif  // MODULES_TASK_2_GRIGORYAN_G_CANNON_OMP_CANNON_H_
+
+\end{lstlisting}
+
+\par 3. Реализация на TBB.
+\begin{lstlisting}
+matrix AlgorithmCannonTBB(const matrix &A, const matrix &B) {
+    if (A[0].size() != B.size())
+        throw std::invalid_argument("Different values for col and row");
+
+    tbb::task_scheduler_init init;
+    auto numThreads = init.default_num_threads();
+    int aWidth = A[0].size();
+    int lastWidth = aWidth;
+    int q = std::sqrt(numThreads);
+    matrix tempA = A;
+    matrix tempB = B;
+
+    if (aWidth % q != 0) {
+       while (aWidth % q != 0) {
+           tempA.push_back(std::vector<double>(lastWidth, 0));
+           tempB.push_back(std::vector<double>(lastWidth, 0));
+           aWidth++;
+       }
+        for (int i = 0; i < aWidth; i++) {
+            for (int j = 0; j < aWidth - lastWidth; j++) {
+                tempA[i].push_back(0);
+                tempB[i].push_back(0);
+            }
+        }
+    }
+    int blockSize = aWidth / q;
+    matrix result(n, std::vector<double>(n));
+
+    tbb::parallel_for(tbb::blocked_range2d<size_t>(0, aWidth, blockSize, 0, aWidth, blockSize),
+                        [&](const tbb::blocked_range2d<size_t>& r) {
+        int xThread = r.rows().begin() / blockSize;
+        int yThread = r.cols().begin() / blockSize;
+        int xBlockA = 0, yBlockA = 0, xBlockB = 0, yBlockB = 0;
+
+        matrix num1(block_size), num2(block_size),
+            numres(block_size, std::vector<double>(block_size, 0));
+
+        for (int k = 0; k < blockSize; k++) {
+            xBlockA = xThread * blockSize + k;
+            yBlockA = ((yThread + xThread) % q) * blockSize;
+
+            yBlockB = yThread * blockSize;
+            xBlockB = yBlockA + k;
+
+            num1[k] = std::vector<double>(tempA[xBlockA].begin() + yBlockA,
+             tempA[xBlockA].begin() + yBlockA + blockSize);
+            num2[k] = std::vector<double>(tempB[xBlockB].begin() + yBlockB,
+             tempB[xBlockB].begin() + yBlockB + blockSize);
+        }
+        for (int kk = 0; kk < q; kk++) {
+            for (int x = 0; x < blockSize; x++) {
+                for (int y = 0; y < blockSize; y++) {
+                    for (int s = 0; s < blockSize; s++) {
+                        numres[x][y] += num1[x][s] * num2[s][y];
+                    }
+                }
+            }
+            if (kk == q - 1)
+                break;
+            for (int k = 0; k < blockSize; k++) {
+                int xA = xThread * blockSize + k;
+                int yA = ((yBlockA / blockSize + kk + 1) % q) * blockSize;
+                int xB = ((xBlockB / blockSize + kk + 1) % q) * blockSize + k;
+                int yB = yThread * blockSize;
+                num1[k] = std::vector<double>(tempA[xA].begin() + yA,
+              tempA[xA].begin() + yA + blockSize);
+                num2[k] = std::vector<double>(tempB[xB].begin() + yB,
+              tempB[xB].begin() + yB + blockSize);
+            }
+        }
+            for (int x = 0; x < blockSize; x++) {
+                for (int y = 0; y < blockSize; y++) {
+                    int xx = x + xThread * blockSize;
+                    int yy = y + yThread * blockSize;
+                    result[xx][yy] = numres[x][y];
+                }
+            }
+    });
+    if (lastWidth != aWidth) {
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, aWidth, blockSize), [&](const tbb::blocked_range<size_t>& r) {
+            for (auto i = r.begin(); i < r.end(); i++) {
+                result[i].resize(lastWidth);
+            }
+        });
+    }
+    result.resize(lastWidth);
+    return result;
+}
+
+\end{lstlisting}
+\begin{lstlisting}
+// Copyright 2021 Grigoryan Garry
+#include <gtest/gtest.h>
+#include <iostream>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <numeric>
+#include <random>
+#include <stack>
+#include "../../../modules/task_3/grigoryan_g_matrix_Cannon_TBB/matrix_m_Cannon.h"
+
+
+TEST(Matrix_Cannon_tbb, throw_when_different_size_mat) {
+ matrix A = RandomMatrix(3);
+ matrix B = RandomMatrix(4);
+ ASSERT_ANY_THROW(AlgorithmCannonTBB(A, B));
+}
+
+TEST(Matrix_Cannon_tbb, time_for_parallel) {
+ matrix A = RandomMatrix(100);
+ matrix B = RandomMatrix(100);
+ matrix rez1 = BlockMulti(A, B, 10); 
+ matrix rez2 = AlgorithmCannonTBB(A, B);
+ ASSERT_TRUE(CompareMatrix(rez1, rez2));
+}
+
+TEST(Matrix_Cannon_tbb, correct_result_mat_size_3) {
+ matrix A = {{4.1 ,5.5, 6.6},
+    {5.2, 7.2, 1.3},
+    {4.1,7.8,9.7}};
+ matrix B = {{4.1,7.8,9.7},
+    {3.6,4.5,5.8},
+    {5.1,5.9,5.1}};
+ matrix rez = {{74.37, 81.73, 88.93},
+    {59.07, 62.95, 78.03},
+    {98.46, 110.37, 118.08}};
+
+ ASSERT_TRUE(CompareMatrix(rez, AlgorithmCannonTBB(A, B)));
+}
+
+TEST(Matrix_Cannon_tbb, correct_result_mat_size_4) {
+ matrix A = {{2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2}};
+ matrix B = {{2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2},
+    {2.2,2.2,2.2,2.2}};
+ matrix rez = {{19.36, 19.36, 19.36, 19.36},
+    {19.36, 19.36, 19.36, 19.36},
+    {19.36, 19.36, 19.36, 19.36},
+    {19.36, 19.36, 19.36, 19.36}};
+
+ ASSERT_TRUE(CompareMatrix(rez, AlgorithmCannonTBB(A, B)));
+}
+
+TEST(Matrix_Cannon_tbb, correct_result_different_algorithms) {
+ matrix A = RandomMatrix(5);
+ matrix B = RandomMatrix(5);
+ ASSERT_TRUE(CompareMatrix(NaiveMulti(A, B), AlgorithmCannonTBB(A, B)));
+}
+
+
+int main(int argc, char **argv) {
+ ::testing::InitGoogleTest(&argc, argv);
+ return RUN_ALL_TESTS();
+}
+\end{lstlisting}
+
+\end{document}
